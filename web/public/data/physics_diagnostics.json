@@ -1,0 +1,149 @@
+{
+ "derate": 0.8707,
+ "by_hour": [
+  {
+   "hour": 6,
+   "resid_kw": -298.3
+  },
+  {
+   "hour": 7,
+   "resid_kw": -262.7
+  },
+  {
+   "hour": 8,
+   "resid_kw": -160.4
+  },
+  {
+   "hour": 9,
+   "resid_kw": -64.3
+  },
+  {
+   "hour": 10,
+   "resid_kw": 18.2
+  },
+  {
+   "hour": 11,
+   "resid_kw": 57.2
+  },
+  {
+   "hour": 12,
+   "resid_kw": 57.5
+  },
+  {
+   "hour": 13,
+   "resid_kw": 47.1
+  },
+  {
+   "hour": 14,
+   "resid_kw": -21.7
+  },
+  {
+   "hour": 15,
+   "resid_kw": -92.5
+  },
+  {
+   "hour": 16,
+   "resid_kw": -198.3
+  },
+  {
+   "hour": 17,
+   "resid_kw": -286.6
+  },
+  {
+   "hour": 18,
+   "resid_kw": -267.9
+  }
+ ],
+ "by_month": [
+  {
+   "month": "2024-01",
+   "resid_kw": -22.2,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2024-02",
+   "resid_kw": -233.1,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2024-03",
+   "resid_kw": -34.0,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2024-04",
+   "resid_kw": -256.5,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2024-05",
+   "resid_kw": -92.2,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2024-06",
+   "resid_kw": -69.7,
+   "rain_mm": 117.3
+  },
+  {
+   "month": "2024-07",
+   "resid_kw": -29.5,
+   "rain_mm": 251.8
+  },
+  {
+   "month": "2024-08",
+   "resid_kw": 16.2,
+   "rain_mm": 151.6
+  },
+  {
+   "month": "2024-09",
+   "resid_kw": 27.9,
+   "rain_mm": 165.1
+  },
+  {
+   "month": "2024-10",
+   "resid_kw": 24.5,
+   "rain_mm": 51.0
+  },
+  {
+   "month": "2024-11",
+   "resid_kw": -15.8,
+   "rain_mm": 55.7
+  },
+  {
+   "month": "2024-12",
+   "resid_kw": -209.0,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2025-01",
+   "resid_kw": -64.0,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2025-02",
+   "resid_kw": -205.9,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2025-03",
+   "resid_kw": -109.0,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2025-04",
+   "resid_kw": -245.5,
+   "rain_mm": 0.0
+  },
+  {
+   "month": "2025-05",
+   "resid_kw": -142.3,
+   "rain_mm": 22.3
+  },
+  {
+   "month": "2025-06",
+   "resid_kw": -73.3,
+   "rain_mm": 132.1
+  }
+ ]
+}
