@@ -24,9 +24,9 @@ WORST_DAYS = 3
 def _dump(name: str, obj) -> None:
     C.WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
     C.OUT_DIR.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(obj, indent=1, default=_json_default, allow_nan=False)
-    (C.WEB_DATA_DIR / f"{name}.json").write_text(text)
-    (C.OUT_DIR / f"{name}.json").write_text(text)
+    text = json.dumps(obj, separators=(",", ":"), default=_json_default, allow_nan=False)
+    (C.WEB_DATA_DIR / f"{name}.json").write_text(text, encoding="utf-8", newline="\n")
+    (C.OUT_DIR / f"{name}.json").write_text(text, encoding="utf-8", newline="\n")
 
 
 def _json_default(o):
@@ -89,10 +89,18 @@ def export_physics_diagnostics(prep: Prepared) -> None:
     by_hour = resid.groupby(x.index.hour).mean()
     by_month = resid.groupby(x.index.to_period("M")).mean()
     rain = f["rainfall_mm"].groupby(f.index.to_period("M")).sum()
+    monsoon = x.index.month.isin([6, 7, 8, 9])
+    day = s.loc[x.index, "cs_poa"] > C.DAYLIGHT_POA_WM2
     _dump(
         "physics_diagnostics",
         {
             "derate": round(derate, 4),
+            # Error floor of the physics chain if tomorrow's irradiance were known exactly.
+            "oracle_mae_kw": {
+                "all_daylight": _num(resid[day].abs().mean()),
+                "monsoon_daylight": _num(resid[day & monsoon].abs().mean()),
+                "dry_daylight": _num(resid[day & ~monsoon].abs().mean()),
+            },
             "by_hour": [{"hour": int(h), "resid_kw": _num(v)} for h, v in by_hour.items()],
             "by_month": [{"month": str(mo), "resid_kw": _num(v), "rain_mm": _num(rain.get(mo, 0))} for mo, v in by_month.items()],
         },

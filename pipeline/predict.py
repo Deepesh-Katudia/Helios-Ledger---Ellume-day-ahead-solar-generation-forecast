@@ -64,5 +64,7 @@ def write_submission(fc: Forecast) -> pd.DataFrame:
     sub = fc.predictions[["timestamp", "predicted_ac_power_kw"]]
     validate_submission(sub)
     C.OUT_DIR.mkdir(parents=True, exist_ok=True)
-    sub.to_csv(C.PREDICTIONS_CSV, index=False)
+    sub.to_csv(C.PREDICTIONS_CSV, index=False, lineterminator="\n")
+    C.WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    sub.to_csv(C.WEB_DATA_DIR / "predictions.csv", index=False, lineterminator="\n")
     return sub

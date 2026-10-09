@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+/* Helios Ledger — "pre-dawn ledger": warm ink night, solar amber, monsoon blue.
+   Dark is the identity (a forecast is written the night before), with a paper-toned
+   light theme for printing/reading. */
+:root {
+  --c-bg: #0d0b09;
+  --c-bg-2: #15120e;
+  --c-surface: #1b1712;
+  --c-line: #2e2820;
+  --c-ink: #f3ebdd;
+  --c-ink-2: #c9bda9;
+  --c-muted: #8a7f6e;
+  --c-slate: #6f7c8a;
+  --c-sun: #f5a524;
+  --c-sun-soft: #f5a52422;
+  --c-ember: #ff6b2c;
+  --c-sky: #6ea0ff;
+  --c-sky-soft: #6ea0ff1f;
+  --c-violet: #b18cff;
+  --c-good: #7fd6a4;
+  --c-bad: #ff7a6b;
+  --grain-opacity: 0.07;
+}
+
+:root[data-theme="light"] {
+  --c-bg: #f6f0e4;
+  --c-bg-2: #efe6d4;
+  --c-surface: #fffaf0;
+  --c-line: #ded2bb;
+  --c-ink: #1b1610;
+  --c-ink-2: #4a4031;
+  --c-muted: #7c705e;
+  --c-slate: #5b6876;
+  --c-sun: #c97a00;
+  --c-sun-soft: #c97a0018;
+  --c-ember: #d4471a;
+  --c-sky: #2f66d0;
+  --c-sky-soft: #2f66d01a;
+  --c-violet: #7a4fd6;
+  --grain-opacity: 0.05;
+}
+
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-bg-2: var(--c-bg-2);
+  --color-surface: var(--c-surface);
+  --color-line: var(--c-line);
+  --color-ink: var(--c-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-muted: var(--c-muted);
+  --color-sun: var(--c-sun);
+  --color-ember: var(--c-ember);
+  --color-sky: var(--c-sky);
+  --color-good: var(--c-good);
+  --color-bad: var(--c-bad);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter-tight);
+  --font-mono: var(--font-jetbrains);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-family: var(--font-inter-tight), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Film-grain atmosphere, fixed so it doesn't scroll. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+::selection {
+  background: var(--c-sun);
+  color: #0d0b09;
+}
+
+.num {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.display {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+
+.rule {
+  border-color: var(--c-line);
+}
+
+/* Focus that looks designed rather than default. */
+:focus-visible {
+  outline: 2px solid var(--c-sun);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  color: var(--c-ink-2);
+  transition: color 150ms, border-color 150ms, background 150ms, transform 150ms;
+}
+.chip:hover {
+  color: var(--c-ink);
+  border-color: var(--c-muted);
+}
+.chip:active {
+  transform: translateY(1px);
+}
+.chip[aria-pressed="true"] {
+  color: #0d0b09;
+  background: var(--c-sun);
+  border-color: var(--c-sun);
+}
+
+/* Recharts: inherit the palette. */
+.recharts-cartesian-grid line {
+  stroke: var(--c-line);
+}
+.recharts-text {
+  fill: var(--c-muted);
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 11px;
+}
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
