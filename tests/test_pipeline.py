@@ -102,3 +102,34 @@ def test_written_predictions_satisfy_contract():
     if not C.PREDICTIONS_CSV.exists():
         pytest.skip("run run_all.py first")
     validate_submission(pd.read_csv(C.PREDICTIONS_CSV, dtype={"timestamp": str}))
+
+
+def test_fold_qc_derate_is_fitted_without_test_rows(monkeypatch):
+    """The QC derate deciding which hours are 'clean' must never see the test window."""
+    import pipeline.evaluate as E
+
+    prep = E.prepare_train()
+    idx = prep.base.index
+    test = pd.Series((idx >= C.VALID_START) & (idx < C.VALID_END), index=idx)
+    seen = []
+
+    class Stop(Exception):
+        pass
+
+    def spy(df, usable):
+        seen.append(usable.copy())
+        raise Stop
+
+    monkeypatch.setattr(E, "fit_derate", spy)
+    with pytest.raises(Stop):
+        E.run_fold(prep, ~test, test)
+    assert not (seen[0] & test).any()
+
+
+def test_complete_days_excludes_partially_scored_days():
+    from pipeline.evaluate import complete_days
+
+    idx = pd.date_range("2024-07-01 06:00", periods=4, freq="h").append(pd.date_range("2024-07-02 06:00", periods=4, freq="h"))
+    daylight = pd.Series(True, index=idx)
+    scored = pd.Series([True] * 4 + [True, False, True, True], index=idx)
+    assert list(complete_days(scored, daylight)) == [pd.Timestamp("2024-07-01")]

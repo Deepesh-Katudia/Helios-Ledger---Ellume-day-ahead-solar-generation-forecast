@@ -15,7 +15,9 @@ export type Metrics = {
   bias_kw: number;
   nmae_pct: number;
   nrmse_pct: number;
-  daily_energy_mae_mwh: number;
+  /** Over complete days only (every daylight hour scored); null if there are none. */
+  daily_energy_mae_mwh: number | null;
+  n_complete_days: number;
 };
 
 export type ModelKey = "persistence" | "b0" | "b1" | "m1" | "m2" | "m3";
@@ -51,7 +53,8 @@ export const summary = summaryJson as {
   rows_total: number;
 };
 
-type Scheme = { label: string; results: Record<string, Metrics> };
+/** results: vs the available-plant (clean) target. exports: vs recorded exports incl. outages. */
+type Scheme = { label: string; results: Record<string, Metrics>; exports?: Record<string, Metrics> };
 export const leaderboard = leaderboardJson as unknown as {
   seasonal_holdout: Scheme;
   forward_holdout: Scheme;
@@ -59,12 +62,15 @@ export const leaderboard = leaderboardJson as unknown as {
   lomo_by_month: (Metrics & { month: string; model: string })[];
 };
 
-type ValidationRow = { t: string; actual: number | null; scored: boolean; cloud: number | null; poa: number | null } & Record<string, number | null | string | boolean>;
+type ValidationRow = { t: string; actual: number | null; export: number | null; scored: boolean; cloud: number | null; poa: number | null } & Record<string, number | null | string | boolean>;
 export type WorstDay = {
   date: string;
   abs_energy_error_mwh: number;
   actual_mwh: number;
   pred_mwh: number;
+  /** Energies above are summed over these scored hours, not necessarily the whole day. */
+  scored_hours: number;
+  daylight_hours: number;
   forecast_cloud_mean: number;
   realised_clear_sky_index: number;
   rain_mm: number;
@@ -72,9 +78,9 @@ export type WorstDay = {
 const validation = validationJson as unknown as { models: string[]; final: string; series: ValidationRow[]; worst_days: WorstDay[] };
 
 /** Compact validation series keyed by model key (keeps the client payload small). */
-export type ValPoint = { t: string; actual: number | null; cloud: number | null; poa: number | null } & Partial<Record<ModelKey, number | null>>;
+export type ValPoint = { t: string; actual: number | null; export: number | null; cloud: number | null; poa: number | null } & Partial<Record<ModelKey, number | null>>;
 export const validationSeries: ValPoint[] = validation.series.map((r) => {
-  const point: ValPoint = { t: r.t, actual: r.actual, cloud: r.cloud, poa: r.poa };
+  const point: ValPoint = { t: r.t, actual: r.actual, export: r.export, cloud: r.cloud, poa: r.poa };
   for (const m of MODELS) point[m.key] = r[m.name] as number | null;
   return point;
 });

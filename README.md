@@ -16,7 +16,7 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows   (macOS/Linux: source .venv/bin/activate)
 pip install -r requirements.txt
 python run_all.py               # ~20 s; writes outputs/predictions.csv, outputs/*.json, outputs/figures/*.png
-pytest                          # 15 tests
+pytest                          # 17 tests
 ```
 
 The run is deterministic. `outputs/predictions.csv` should hash to md5 `30289ea36df116466e3999ffee9394fb`.
@@ -57,7 +57,7 @@ web/                    Next.js 16 + Tailwind 4 + Recharts
 
 ## Results at a glance
 
-These are daylight scores on the Jul–Aug 2024 hold-out, the seasonal twin of the test.
+These are daylight scores on the Jul–Aug 2024 hold-out, the seasonal twin of the test, on **available-plant** hours (the plant running and metering correctly).
 
 | Model | MAE kW | RMSE kW | nMAE |
 |---|---|---|---|
@@ -66,6 +66,8 @@ These are daylight scores on the Jul–Aug 2024 hold-out, the seasonal twin of t
 | Physics (clear-sky × cloud → PVWatts) | 492 | 652 | 4.9 % |
 | LightGBM (clear-sky index) | 519 | 700 | 5.2 % |
 | **Final: ½ physics + ½ LightGBM** | **495** | **660** | **4.9 %** |
+
+**The submission forecasts an available plant.** Scored against actual exports including the 12–16 Aug 2024 outage, the final model's MAE is 840 kW, with a +228 kW over-forecast bias. A weather forecast can't see a breaker trip; APPROACH.md §7.3 discusses this.
 
 APPROACH.md §5–6 explains why the final model is a blend, and why LightGBM alone wins in the dry season but not in the monsoon.
 

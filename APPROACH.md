@@ -5,7 +5,8 @@
 **Submission.** `outputs/predictions.csv`, produced by `python run_all.py` (about 20 s, deterministic; md5 `30289ea36df116466e3999ffee9394fb`).
 
 **Headline.**
-- On a hold-out of Jul–Aug 2024 (the same season one year earlier), the final model has a daylight MAE of **495 kW (4.9 % of capacity)**, an RMSE of 660 kW, and a daily-energy MAE of 4.9 MWh.
+- On a hold-out of Jul–Aug 2024 (the same season one year earlier), the final model has a daylight MAE of **495 kW (4.9 % of capacity)**, an RMSE of 660 kW, and a daily-energy MAE of 4.9 MWh over the 46 days on which every daylight hour is scored.
+- These are **available-plant** scores: hours when the plant was running and metering correctly. Against what the plant *actually exported*, including the 12–16 Aug outage, the same forecast scores 840 kW MAE with a +228 kW over-forecast bias (§7.3). The submission is an available-plant forecast; that distinction is deliberate and runs through this note.
 - That is a **61 % RMSE improvement on seasonal climatology**.
 - In the monsoon, the error is mostly inherited from the cloud forecast, not added by the model.
 
@@ -46,7 +47,7 @@ I profiled every column before writing any model, and asked of each anomaly: *is
 The key diagnostic was the ratio **AC kW per W/m² of measured plane-of-array irradiance**. For this plant it sits at about 10.5, and anything far from that needs explaining.
 
 - **SCADA logged MW instead of kW for 26 days (14 Jul – 8 Aug 2024).** The ratio drops to 0.011, which is exactly 1000× low, while power still tracks irradiance perfectly. These are the most valuable days in the file because they are the seasonal twin of the test period. Throwing them away would gut the validation set, so they are **rescaled ×1000**. Detection is per day: ≥3 daylight hours with small *positive* power and a ratio < 0.1. An outage reads 0 or negative, so it can't be mistaken for an MW day. Validation later served as a check: one of the worst-forecast days (16 Jul) is inside this window, and its rescaled actuals line up with measured irradiance.
-- **Outages and curtailment.** There are 269 hours of STOP, PARTIAL or daylight STANDBY, including a five-day STOP on 12–16 Aug 2024 under full sun. A weather forecast cannot predict a breaker trip, so these hours are **excluded from the target**, never imputed. The forecast is therefore explicitly *for an available plant*. That's the right product for a grid nomination, but it's a known limitation (§7).
+- **Outages and curtailment.** There are 269 hours of STOP, PARTIAL or daylight STANDBY, including a five-day STOP on 12–16 Aug 2024 under full sun. A weather forecast cannot predict a breaker trip, so these hours are **excluded from the target**, never imputed. The forecast is therefore explicitly *for an available plant*: it predicts what the plant would export if it runs normally, not what it will export if it trips. That's the right product for the weather part of a grid nomination, but actual exports will fall short of it whenever there's an outage. §5 scores it both ways and §7.3 quantifies the gap.
 - **Frozen AC meter.** For about 40 hours (17–19 Sep 2024) the meter read exactly 2,187.44 kW, at night and at noon alike. The rule: identical two-decimal values in consecutive hours above 100 kW are a historian "last value hold". The first value is kept and the held copies are flagged (47 h).
 - **Stuck pyranometer.** On 25–27 Aug 2024 the sensor read 412.6 W/m², including at midnight. This is what had looked like a timestamp shift (irradiance at hour 0) in my first profiling pass. Power was fine on those days, so only the sensor value is dropped.
 - **Spikes.** Readings reach 26.9 MW on a 10 MW-AC plant. Values up to 2 % above the rating are kept as real clipping; above that, the hour is excluded (13 h).
@@ -82,7 +83,13 @@ Each model is the benchmark for the next one.
 
 ## 5. Validation (`pipeline/evaluate.py`)
 
-The schemes are time-based only. Random K-fold on hourly weather data leaks through autocorrelation and would make every model look better than it is. Scoring uses clean **daylight** hours only: night is trivially zero and would flatter everyone, and outages aren't a weather question. Physical constants (cloud curve, derate) are **re-fitted inside every fold**.
+The schemes are time-based only. Random K-fold on hourly weather data leaks through autocorrelation and would make every model look better than it is. Everything fitted is **re-fitted inside every fold, on that fold's training rows only**: the cloud curve, the plant derate, the models, and also the derate behind the performance-ratio QC rule, which decides which hours count as "clean". My first version fitted that QC derate once on all history, which let the validation months influence their own cleaning. I fixed it so the fold's training data alone sets it. In practice the fold derates only range over 0.868–0.874, and the resulting clean-hour mask is identical in all 20 folds, so no score changed. But the leak is gone by construction, and a test (`test_fold_qc_derate_is_fitted_without_test_rows`) keeps it out.
+
+Two scoring targets, both on daylight hours (night is trivially zero and would flatter everyone):
+- **Available plant** (primary, the model's purpose): clean hours only. Outages, curtailment and data faults are excluded.
+- **Actual exports**: every daylight hour with a trustworthy meter reading, *including* outages and curtailment. Only data errors (missing, spikes, frozen meter, conflicting duplicates) are dropped.
+
+**Daily energy** error is computed only on **complete days**, where every daylight hour is scored. Summing a partially scored day would understate its energy and flatter the metric.
 
 1. **Seasonal hold-out (primary).** Train on everything except Jul–Aug 2024, then forecast Jul–Aug 2024. It's the closest rehearsal of the test. It's harsh, because the only monsoon left in training is June and September.
 2. **Leave-one-month-out (18 folds).** Each month is forecast by a model trained on the other 17. It shows how error depends on regime. The monsoon folds keep one monsoon in training, which mirrors the real test.
@@ -141,14 +148,21 @@ The final model is re-fitted on **all** clean training data, including the resca
 
 1. **Monsoon days that are brighter than forecast.** This is the dominant error. A single total-cloud-cover number can't distinguish thin, bright high overcast from thick convective cloud. Expect daily errors of 10+ MWh on such days.
 2. **One monsoon of history.** Every monsoon conclusion rests on Jun–Sep 2024 and Jun 2025. The regime-dependent cloud mapping in particular is learned from one season.
-3. **Availability is assumed.** Outages and curtailment were removed from training, so the forecast is optimistic whenever the plant isn't fully available. If the grader scores against raw exports that include outages, those hours will show large errors. That is the correct behaviour for a weather model, but it should be stated plainly.
+3. **Availability is assumed, and it costs a lot when it fails.** Outages and curtailment were removed from training, so this forecasts an *available* plant. Scored against actual exports in the Jul–Aug 2024 hold-out:
+
+   | Target | MAE | RMSE | Bias | Daily energy MAE |
+   |---|---|---|---|---|
+   | Available plant (614 h, 46 complete days) | 495 kW | 660 kW | −166 kW | 4.9 MWh |
+   | Actual exports incl. outages (670 h, 51 complete days) | 840 kW | 1,600 kW | +228 kW | 9.4 MWh |
+
+   Most of that gap is the five-day STOP on 12–16 Aug, when the forecast promised several MW and the plant exported nothing. In the dry-season forward hold-out the gap is small (264 → 304 kW) because outages were rare there. A weather model is right to ignore what it can't see. Operationally, though, this forecast needs to be combined with an availability plan before it becomes a nomination, and anyone scoring it against raw exports should expect outage hours to dominate the error.
 4. **Point forecast only.** A grid nomination is a risk decision, and there are no quantiles yet.
 5. **Clear-sky model.** It uses Ineichen with the default climatological turbidity, not the site's monsoon aerosol. Some of the low-sun residual may be turbidity rather than shading.
 
 ## 8. A case where it performed poorly
 
 **11 Aug 2024**, the worst day of the hold-out:
-- **Forecast:** 37.7 MWh. **Delivered:** 49.1 MWh, an 11.4 MWh under-forecast.
+- **Forecast:** 37.7 MWh. **Delivered:** 49.1 MWh, an 11.4 MWh under-forecast. Both are summed over the 10 of 11 daylight hours that were scored; the 09:00 hour was a meter spike and is excluded, so these aren't quite full-day totals.
 - **What the forecast said:** 91 % cloud through daylight, with no rain.
 - **What happened:** the pyranometer recorded 77 % of clear-sky irradiance, and the plant reached 7.6 MW at noon.
 - **Why every model missed:** all of them are anchored on the cloud number, so they missed together and in the same direction. The plant model was fine. Given the measured irradiance, the physics chain tracks the actual curve closely (figure `05_worst_day.png`).
@@ -175,7 +189,7 @@ The 09:00 gap on 11 Aug is a 17 MW meter spike that the cleaning removed. If it 
 python -m venv .venv && .venv/Scripts/activate   # or source .venv/bin/activate
 pip install -r requirements.txt
 python run_all.py            # clean → validate (3 schemes, 18 LOMO folds) → fit → predictions.csv → exports
-pytest                       # 15 tests: parsing, cleaning rules, physics sanity, submission contract
+pytest                       # 17 tests: parsing, cleaning rules, fold leakage, physics sanity, submission contract
 ```
 
 | Path | Contents |

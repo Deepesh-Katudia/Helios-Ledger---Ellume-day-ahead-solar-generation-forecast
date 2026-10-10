@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter_Tight, JetBrains_Mono } from "next/font/google";
+import { MotionProvider } from "@/components/motion";
 import "./globals.css";
 
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], axes: ["opsz", "SOFT"] });
@@ -19,7 +20,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${fraunces.variable} ${interTight.variable} ${jetbrains.variable}`}>
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        <MotionProvider>{children}</MotionProvider>
+      </body>
     </html>
   );
 }

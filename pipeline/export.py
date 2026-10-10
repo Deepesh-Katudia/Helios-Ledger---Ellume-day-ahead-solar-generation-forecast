@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from . import config as C
-from .evaluate import Prepared, eval_mask, fit_physics
+from .evaluate import FoldResult, Prepared, eval_mask, export_mask, fit_physics
 from .features import build_features
 from .models import LGB_FEATURES
 from .predict import Forecast
@@ -24,9 +24,20 @@ WORST_DAYS = 3
 def _dump(name: str, obj) -> None:
     C.WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
     C.OUT_DIR.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(obj, separators=(",", ":"), default=_json_default, allow_nan=False)
+    text = json.dumps(_finite(obj), separators=(",", ":"), default=_json_default, allow_nan=False)
     (C.WEB_DATA_DIR / f"{name}.json").write_text(text, encoding="utf-8", newline="\n")
     (C.OUT_DIR / f"{name}.json").write_text(text, encoding="utf-8", newline="\n")
+
+
+def _finite(o):
+    """NaN/inf -> null, recursively (JSON has no NaN)."""
+    if isinstance(o, dict):
+        return {k: _finite(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_finite(v) for v in o]
+    if isinstance(o, (float, np.floating)) and not np.isfinite(o):
+        return None
+    return o
 
 
 def _json_default(o):
@@ -107,17 +118,28 @@ def export_physics_diagnostics(prep: Prepared) -> None:
     )
 
 
-def export_validation(prep: Prepared, seasonal: tuple, forward: tuple, lomo: pd.DataFrame) -> dict:
-    f, s = prep.frame, prep.solar
-    res, preds = seasonal
+def export_validation(prep: Prepared, seasonal: FoldResult, forward: FoldResult, lomo: pd.DataFrame) -> dict:
+    # The fold's own cleaned frame: its QC was fitted without the hold-out months.
+    f, s = seasonal.frame, prep.solar
+    res, preds = seasonal.results, seasonal.preds
     scored = eval_mask(f, s).reindex(preds.index)
+    exportable = export_mask(f, s).reindex(preds.index)
     series = []
     for ts in preds.index:
-        row = {"t": ts.strftime("%Y-%m-%d %H:%M"), "actual": _num(f.at[ts, "ac_clean"]), "scored": bool(scored[ts]), "cloud": _num(f.at[ts, "forecast_cloud_cover"], 3), "poa": _num(f.at[ts, "measured_poa_wm2"])}
+        row = {
+            "t": ts.strftime("%Y-%m-%d %H:%M"),
+            "actual": _num(f.at[ts, "ac_clean"]),
+            # Recorded export incl. outages/curtailment (data errors removed). Night -> 0.
+            "export": _num(min(max(f.at[ts, C.TARGET], 0), C.AC_CAPACITY_KW)) if exportable[ts] else (0.0 if s.at[ts, "cs_poa"] <= 0 else None),
+            "scored": bool(scored[ts]),
+            "cloud": _num(f.at[ts, "forecast_cloud_cover"], 3),
+            "poa": _num(f.at[ts, "measured_poa_wm2"]),
+        }
         row.update({name: _num(preds.at[ts, name]) for name in preds.columns})
         series.append(row)
 
-    # Worst days for the final model, by absolute daily energy error on scored hours.
+    # Worst days for the final model, ranked by absolute energy error summed over the day's
+    # *scored* hours. Energies below are over those hours only (not always a full day).
     sc = preds[scored]
     err = (sc[FINAL] - f.loc[sc.index, "ac_clean"]).abs()
     daily_err = err.groupby(sc.index.normalize()).sum() / 1000
@@ -125,6 +147,7 @@ def export_validation(prep: Prepared, seasonal: tuple, forward: tuple, lomo: pd.
     for day in daily_err.sort_values(ascending=False).index[:WORST_DAYS]:
         d = day.strftime("%Y-%m-%d")
         lit = sc.index[sc.index.normalize() == day]
+        daylight_hours = int(((s.index.normalize() == day) & (s["cs_poa"] > C.DAYLIGHT_POA_WM2)).sum())
         kt = (f.loc[lit, "measured_poa_wm2"] / s.loc[lit, "cs_poa"]).clip(0, 1.3)
         worst.append(
             {
@@ -132,23 +155,33 @@ def export_validation(prep: Prepared, seasonal: tuple, forward: tuple, lomo: pd.
                 "abs_energy_error_mwh": _num(daily_err[day], 2),
                 "actual_mwh": _num(f.loc[lit, "ac_clean"].sum() / 1000, 2),
                 "pred_mwh": _num(sc.loc[lit, FINAL].sum() / 1000, 2),
+                "scored_hours": len(lit),
+                "daylight_hours": daylight_hours,
                 "forecast_cloud_mean": _num(f.loc[lit, "forecast_cloud_cover"].mean(), 3),
                 "realised_clear_sky_index": _num(kt.mean(), 3),
                 "rain_mm": _num(f.loc[d, "rainfall_mm"].sum()),
             }
         )
     leaderboard = {
-        "seasonal_holdout": {"label": "Hold-out Jul–Aug 2024 (seasonal twin of test)", "results": res},
-        "forward_holdout": {"label": "Train 2024 → forecast Jan–Jun 2025", "results": forward[0]},
+        "seasonal_holdout": {"label": "Hold-out Jul–Aug 2024 (seasonal twin of test)", "results": res, "exports": seasonal.exports},
+        "forward_holdout": {"label": "Train 2024 → forecast Jan–Jun 2025", "results": forward.results, "exports": forward.exports},
         "lomo_mean": {
             "label": "Leave-one-month-out (18 folds), mean",
-            "results": {} if lomo.empty else lomo.groupby("model")[["mae_kw", "rmse_kw", "nmae_pct", "bias_kw", "daily_energy_mae_mwh"]].mean().to_dict("index"),
+            "results": {} if lomo.empty else _lomo_summary(lomo),
         },
         "lomo_by_month": lomo.to_dict("records"),
     }
     _dump("leaderboard", leaderboard)
     _dump("validation_series", {"models": list(preds.columns), "final": FINAL, "series": series, "worst_days": worst})
     return leaderboard
+
+
+def _lomo_summary(lomo: pd.DataFrame) -> dict:
+    """Mean of each fold's metrics; hour/day counts are summed across folds."""
+    g = lomo.groupby("model")
+    means = g[["mae_kw", "rmse_kw", "nmae_pct", "nrmse_pct", "bias_kw", "daily_energy_mae_mwh"]].mean()
+    counts = g[["n_hours", "n_complete_days"]].sum()
+    return means.join(counts).to_dict("index")
 
 
 def export_test(fc: Forecast) -> None:

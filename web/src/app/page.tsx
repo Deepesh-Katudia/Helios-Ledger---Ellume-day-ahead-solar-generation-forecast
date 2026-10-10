@@ -36,6 +36,7 @@ function storyFor(d: WorstDay): string {
 
 export default function Home() {
   const sh = summary.seasonal_holdout;
+  const shExports = leaderboard.seasonal_holdout.exports?.[summary.final_model];
   const flags = quality.clean.flags;
   const load = quality.load;
   const ex = quality.examples;
@@ -117,6 +118,7 @@ export default function Home() {
       label: "Hold-out Jul–Aug 2024",
       why: "Primary scheme. The test is Jul–Aug 2025 monsoon, so the most honest rehearsal holds out the same two months a year earlier and trains on everything else.",
       results: leaderboard.seasonal_holdout.results,
+      exports: leaderboard.seasonal_holdout.exports,
     },
     {
       id: "lomo",
@@ -129,6 +131,7 @@ export default function Home() {
       label: "Train 2024 → H1 2025",
       why: "Strictly out-of-time: nothing from the future leaks in. A dry-season test, where learned models shine.",
       results: leaderboard.forward_holdout.results,
+      exports: leaderboard.forward_holdout.exports,
     },
   ];
 
@@ -142,7 +145,7 @@ export default function Home() {
   ];
 
   const hero: HeroStat[] = [
-    { value: sh.nmae_pct, decimals: 1, suffix: "%", label: "nMAE, monsoon hold-out", note: `${fmt(sh.mae_kw)} kW mean daylight error on a 10 MW plant` },
+    { value: sh.nmae_pct, decimals: 1, suffix: "%", label: "nMAE, monsoon hold-out", note: `${fmt(sh.mae_kw)} kW daylight error · available-plant hours` },
     { value: Math.round(summary.skill_vs_climatology_rmse * 100), suffix: "%", label: "RMSE skill", note: "improvement over seasonal climatology" },
     { value: summary.rows_flagged_unusable, label: "Hours quarantined", note: `of ${fmt(summary.rows_total)}; cleaned, not guessed` },
     { value: Math.round(summary.test_total_mwh), suffix: " MWh", label: "Forecast, Jul–Aug 2025", note: `${summary.test_days} days · mean daylight cloud ${fmt(summary.test_mean_daylight_cloud * 100)}%` },
@@ -174,7 +177,7 @@ export default function Home() {
             One plant, one imperfect forecast, <em className="text-sun">1,488 promises</em>.
           </>
         }
-        lede="Inputs are four day-ahead forecast fields: cloud cover, temperature, wind and humidity. Plant sensors exist only in the past. Everything the model uses must be knowable the afternoon before."
+        lede="Inputs are four day-ahead forecast fields: cloud cover, temperature, wind and humidity. Plant sensors exist only in the past. Everything the model uses must be knowable the afternoon before. One scoping decision runs through everything below: this is a forecast of what an available plant will export. A weather model cannot see a breaker trip, so outages are scored separately."
       >
         <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
@@ -280,6 +283,34 @@ export default function Home() {
         lede="Six forecasts, three time-respecting validation schemes, no random splits. Scored on clean daylight hours only: night is trivially zero, and outages are not a weather question."
       >
         <Leaderboard schemes={schemes} lomo={leaderboard.lomo_by_month} />
+        {shExports && (
+          <Card className="mt-6 border-[var(--c-bad)]/40">
+            <div className="grid gap-6 md:grid-cols-[1.3fr_1fr] md:items-center">
+              <div>
+                <p className="num text-xs uppercase tracking-[0.2em] text-bad">Available plant ≠ actual exports</p>
+                <h3 className="display mt-2 text-2xl text-ink">What outages cost a weather-only forecast</h3>
+                <p className="mt-3 text-sm leading-relaxed text-ink-2">
+                  Every score above is on available-plant hours. Scored instead against what the plant really exported in Jul–Aug 2024, including the
+                  five-day STOP outage on 12–16 Aug, the same final forecast&rsquo;s error rises sharply and turns into an over-forecast. Nothing in a
+                  weather forecast predicts a breaker trip. In operations this forecast would be combined with an availability plan, such as
+                  maintenance schedules or known derates.
+                </p>
+              </div>
+              <dl className="grid grid-cols-2 gap-4">
+                <div className="rounded-xl border rule p-4">
+                  <dt className="text-xs text-muted">Available plant</dt>
+                  <dd className="num mt-1 text-2xl text-ink">{fmt(sh.mae_kw)} kW</dd>
+                  <dd className="num text-xs text-ink-2">bias {fmt(sh.bias_kw)} kW</dd>
+                </div>
+                <div className="rounded-xl border border-[var(--c-bad)]/50 p-4">
+                  <dt className="text-xs text-muted">Actual exports</dt>
+                  <dd className="num mt-1 text-2xl text-bad">{fmt(shExports.mae_kw)} kW</dd>
+                  <dd className="num text-xs text-ink-2">bias +{fmt(shExports.bias_kw)} kW</dd>
+                </div>
+              </dl>
+            </div>
+          </Card>
+        )}
         <div className="mt-6">
           <Explorer series={validationSeries} />
         </div>
@@ -308,7 +339,7 @@ export default function Home() {
             Jul–Aug 2025: <em className="text-sun">{fmt(summary.test_total_mwh)} MWh</em> promised.
           </>
         }
-        lede={`The test period is the cloudiest stretch in the record: mean daylight forecast cloud is ${fmt(summary.test_mean_daylight_cloud * 100)}%, against 70% in Jul–Aug 2024. That's why the submitted forecast keeps physics in the blend: it extrapolates sensibly where the trees have little data.`}
+        lede={`The test period is the cloudiest stretch in the record: mean daylight forecast cloud is ${fmt(summary.test_mean_daylight_cloud * 100)}%, against 70% in Jul–Aug 2024. That's why the submitted forecast keeps physics in the blend: it extrapolates sensibly where the trees have little data. These are available-plant numbers: any outage or curtailment in Jul–Aug 2025 will make actual exports fall short of them.`}
       >
         <TestForecast series={testForecast.series} />
       </Section>

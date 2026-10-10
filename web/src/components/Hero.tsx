@@ -1,9 +1,9 @@
 "use client";
 
-import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
 import { fmt } from "@/lib/format";
-import { CountUp, EASE_OUT_EXPO, SplitTitle } from "./motion";
+import { CountUp, EASE_OUT_EXPO, SplitTitle, useReducedMotionSafe } from "./motion";
 
 export interface HeroStat {
   value: number;
@@ -41,7 +41,7 @@ function toPath(values: number[], close: boolean): string {
 }
 
 export function Hero({ profile, stats }: HeroProps) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const pred = profile.map((p) => p.pred);
   const clear = profile.map((p) => p.clearsky);
   const peak = Math.max(...pred);

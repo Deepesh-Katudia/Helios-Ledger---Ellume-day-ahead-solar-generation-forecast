@@ -70,7 +70,8 @@ export function Explorer({ series }: ExplorerProps) {
             <YAxis yAxisId="cloud" orientation="right" width={36} domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} />
             <Tooltip content={<ChartTooltip unit="" labelFormat={(t) => `${dayLabel(t)} · ${t.slice(11)} IST`} />} />
             <Area yAxisId="cloud" dataKey="cloudPct" name="forecast cloud %" fill="var(--c-sky)" fillOpacity={0.05} stroke="var(--c-sky)" strokeOpacity={0.45} strokeWidth={1} isAnimationActive={false} />
-            <Line yAxisId="kw" dataKey="actual" name="Actual" stroke="var(--c-ink)" strokeWidth={2.4} dot={false} isAnimationActive={false} />
+            <Line yAxisId="kw" dataKey="export" name="Recorded export (incl. outages)" stroke="var(--c-bad)" strokeWidth={1.2} strokeDasharray="2 3" dot={false} isAnimationActive={false} />
+            <Line yAxisId="kw" dataKey="actual" name="Actual (available plant)" stroke="var(--c-ink)" strokeWidth={2.4} dot={false} isAnimationActive={false} />
             {MODELS.filter((m) => shown.includes(m.key)).map((m) => (
               <Line key={m.key} yAxisId="kw" dataKey={m.key} name={m.short} stroke={m.color} strokeWidth={m.key === "m3" ? 2.4 : 1.4} dot={false} strokeDasharray={m.key === "m3" ? undefined : "5 4"} isAnimationActive={false} />
             ))}
@@ -78,9 +79,13 @@ export function Explorer({ series }: ExplorerProps) {
         </ResponsiveContainer>
       </LazyMount>
 
+      <p className="mt-3 text-xs leading-relaxed text-muted">
+        White is the available-plant actual the model is scored on; the dotted red line is what the plant really exported, including outages (e.g. the 12–16 Aug STOP). Energies below sum only the scored hours in this window, so they are not full-day totals when an hour was excluded.
+      </p>
+
       <dl className="mt-6 grid grid-cols-2 gap-4 border-t rule pt-5 sm:grid-cols-4">
         <div>
-          <dt className="text-xs text-muted">Actual energy</dt>
+          <dt className="text-xs text-muted">Actual, scored hours</dt>
           <dd className="num text-xl text-ink">{fmt(energy("actual"), 1)} MWh</dd>
         </div>
         {(["m3", "b1", "b0"] as ModelKey[]).map((k) => {

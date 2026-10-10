@@ -2,10 +2,37 @@
 
 // Animation primitives. All of them respect prefers-reduced-motion and animate only
 // transform/opacity, so they stay on the compositor even with many charts on the page.
-import { animate, motion, useInView, useReducedMotion, useScroll, useSpring } from "motion/react";
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { animate, motion, MotionConfig, useInView, useScroll, useSpring } from "motion/react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 
 export const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+
+const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void): () => void {
+  const mq = window.matchMedia(REDUCED_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+/**
+ * Hydration-safe reduced-motion flag. The server cannot know the preference, so during
+ * hydration this reports `false` (matching the server HTML) and only then switches to the
+ * real value. motion's own useReducedMotion returns null on the server but true on a
+ * reduced-motion client, which made the first client render differ from the server's.
+ */
+export function useReducedMotionSafe(): boolean {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCED_QUERY).matches,
+    () => false,
+  );
+}
+
+/** Root provider: honour the OS setting for every motion component (skips transforms). */
+export function MotionProvider({ children }: { children: ReactNode }) {
+  return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
+}
 
 interface RevealProps {
   children: ReactNode;
@@ -16,7 +43,7 @@ interface RevealProps {
 
 /** Fade + rise once when scrolled into view. */
 export function Reveal({ children, delay = 0, y = 28, className }: RevealProps) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   return (
     <motion.div
       className={className}
@@ -40,7 +67,7 @@ interface StaggerProps {
 
 /** Children reveal one after another. */
 export function Stagger({ children, className, itemClassName, as = "div", step = 0.08 }: StaggerProps) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const Container = motion[as];
   const Item = as === "div" ? motion.div : motion.li;
   return (
@@ -73,7 +100,7 @@ interface SplitTitleProps {
 
 /** Headline that rises word by word from behind a mask. */
 export function SplitTitle({ text, accent, accentClassName = "text-sun", after = "" }: SplitTitleProps) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const words = [
     ...text.split(" ").filter(Boolean).map((w) => ({ w, accent: false })),
     ...(accent ? accent.split(" ").map((w) => ({ w, accent: true })) : []),
@@ -114,7 +141,7 @@ interface CountUpProps {
 export function CountUp({ value, decimals = 0, prefix = "", suffix = "", duration = 1.8 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true });
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const format = (v: number) => `${prefix}${v.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${suffix}`;
 
   useEffect(() => {
@@ -132,7 +159,7 @@ export function CountUp({ value, decimals = 0, prefix = "", suffix = "", duratio
     });
     return () => controls.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, value]);
+  }, [inView, value, reduce]);
 
   return (
     <span ref={ref} className="num">
@@ -238,7 +265,7 @@ interface GrowBarProps {
 
 /** Horizontal bar that grows from the left when it scrolls into view. */
 export function GrowBar({ ratio, className = "" }: GrowBarProps) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   return (
     <motion.span
       className={`block origin-left ${className}`}

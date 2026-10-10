@@ -126,6 +126,10 @@ body::before {
 .chip:active {
   transform: translateY(1px);
 }
+.chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 .chip[aria-pressed="true"] {
   color: #0d0b09;
   background: var(--c-sun);

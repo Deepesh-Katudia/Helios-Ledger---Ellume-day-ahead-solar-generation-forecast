@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from . import config as C
-from .evaluate import Prepared
+from .evaluate import FoldResult, Prepared
 from .export import FINAL
 from .predict import Forecast
 
@@ -59,10 +59,10 @@ def fig_lomo(lomo: pd.DataFrame) -> None:
     _save(fig, "03_lomo_by_month.png")
 
 
-def fig_validation_week(prep: Prepared, seasonal: tuple) -> None:
-    _, preds = seasonal
+def fig_validation_week(prep: Prepared, seasonal: FoldResult) -> None:
+    preds = seasonal.preds
     w = preds.loc["2024-07-20":"2024-07-27 23:00"]
-    actual = prep.frame.loc[w.index, "ac_clean"]
+    actual = seasonal.frame.loc[w.index, "ac_clean"]
     fig, ax = plt.subplots(figsize=(11, 4))
     ax.plot(w.index, actual, color=INK, lw=2, label="actual (clean)")
     ax.plot(w.index, w[FINAL], color=SUN, lw=2, label=FINAL)
@@ -73,9 +73,9 @@ def fig_validation_week(prep: Prepared, seasonal: tuple) -> None:
     _save(fig, "04_validation_week.png")
 
 
-def fig_worst_day(prep: Prepared, seasonal: tuple) -> None:
-    _, preds = seasonal
-    f = prep.frame
+def fig_worst_day(prep: Prepared, seasonal: FoldResult) -> None:
+    preds = seasonal.preds
+    f = seasonal.frame
     sc = preds.index[f.loc[preds.index, "train_ok"]]
     err = (preds.loc[sc, FINAL] - f.loc[sc, "ac_clean"]).abs().groupby(sc.normalize()).sum()
     day = err.idxmax().strftime("%Y-%m-%d")
@@ -100,7 +100,7 @@ def fig_test(fc: Forecast) -> None:
     _save(fig, "06_test_daily_energy.png")
 
 
-def make_figures(prep: Prepared, seasonal: tuple, lomo: pd.DataFrame, fc: Forecast) -> None:
+def make_figures(prep: Prepared, seasonal: FoldResult, lomo: pd.DataFrame, fc: Forecast) -> None:
     fig_mw_logging(prep)
     fig_flags(prep)
     fig_lomo(lomo)

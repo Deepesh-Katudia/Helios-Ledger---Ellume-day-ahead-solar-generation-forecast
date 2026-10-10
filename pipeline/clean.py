@@ -17,6 +17,9 @@ from . import config as C
 from .solar import ac_from_poa
 
 AVAILABILITY_LOSS_STATUSES = {"STOP", "PARTIAL"}
+HARD_FLAGS = ["flag_target_missing", "flag_spike", "flag_ac_flatline", "flag_dup_conflict", "flag_outage_status"]
+# Data errors (vs. availability events): hours whose recorded export is not trustworthy.
+MEASUREMENT_FLAGS = ["flag_target_missing", "flag_spike", "flag_ac_flatline", "flag_dup_conflict"]
 
 
 def _run_lengths(values: pd.Series) -> pd.Series:
@@ -83,8 +86,8 @@ def fit_derate(df: pd.DataFrame, usable: pd.Series) -> float:
     return float(np.median(df.loc[m, C.TARGET].to_numpy() / no_derate))
 
 
-def clean_train(df: pd.DataFrame, solar: pd.DataFrame) -> tuple[pd.DataFrame, dict, float]:
-    """Return (frame with `ac_clean`, `train_ok` and flag columns, report, fitted derate)."""
+def rule_flags(df: pd.DataFrame, solar: pd.DataFrame) -> pd.DataFrame:
+    """Rule-based QC with no fitted parameters: safe to compute once on all history."""
     out = df.copy()
     out["ac_raw"] = out[C.TARGET]
     out, mw_fixed = fix_mw_logging(out)
@@ -104,10 +107,17 @@ def clean_train(df: pd.DataFrame, solar: pd.DataFrame) -> tuple[pd.DataFrame, di
         (status == "STANDBY") & daylight & (out["measured_poa_wm2"] > C.PR_MIN_POA_WM2)
     )
 
-    hard_flags = ["flag_target_missing", "flag_spike", "flag_ac_flatline", "flag_dup_conflict", "flag_outage_status"]
-    pre_ok = ~out[hard_flags].any(axis=1)
-    derate = fit_derate(out, pre_ok)
+    out["pre_ok"] = ~out[HARD_FLAGS].any(axis=1)
+    return out
 
+
+def apply_performance_check(base: pd.DataFrame, solar: pd.DataFrame, derate: float) -> pd.DataFrame:
+    """The one *fitted* QC step: flag hours far from the physics expectation.
+
+    `derate` must come from training rows only (see evaluate.run_fold); otherwise which
+    validation hours count as "clean" would depend on parameters fitted on those hours.
+    """
+    out = base.copy()
     expected = ac_from_poa(
         out["measured_poa_wm2"].to_numpy(),
         out["measured_ambient_temp_c"].fillna(out["forecast_temp_c"]).to_numpy(),
@@ -121,19 +131,33 @@ def clean_train(df: pd.DataFrame, solar: pd.DataFrame) -> tuple[pd.DataFrame, di
     # margin: undeclared curtailment, string outages, or metering faults.
     out["flag_pr_anomaly"] = checkable & ~pr.between(C.PR_LOW, C.PR_HIGH)
 
-    all_flags = hard_flags + ["flag_pr_anomaly"]
-    out["train_ok"] = ~out[all_flags].any(axis=1) & ~out["row_missing"]
+    out["train_ok"] = out["pre_ok"] & ~out["flag_pr_anomaly"] & ~out["row_missing"]
+    daylight = solar["cs_poa"] > C.DAYLIGHT_POA_WM2
     out["ac_clean"] = out[C.TARGET].clip(lower=0, upper=C.AC_CAPACITY_KW)
     # Night: the plant draws a few kW of standby power; forecasting that is pointless noise.
     out.loc[~daylight & (solar["sun_elevation"] < 0), "ac_clean"] = 0.0
     out.loc[~out["train_ok"], "ac_clean"] = np.nan
+    return out
 
+
+def clean_train(df: pd.DataFrame, solar: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict, float]:
+    """Full-history cleaning, used for the final model and the exports.
+
+    Returns (rule-flagged base frame, fully cleaned frame, report, derate fitted on all
+    clean history). Validation folds re-run `apply_performance_check` on `base` with a
+    fold-specific derate instead of using the fully cleaned frame.
+    """
+    base = rule_flags(df, solar)
+    derate = fit_derate(base, base["pre_ok"])
+    out = apply_performance_check(base, solar, derate)
+    daylight = solar["cs_poa"] > C.DAYLIGHT_POA_WM2
+    all_flags = HARD_FLAGS + ["flag_pr_anomaly"]
     report = {
         "derate_fitted": round(derate, 4),
         "flags": {f: int(out[f].sum()) for f in all_flags + ["flag_mw_rescaled", "flag_poa_stuck"]},
-        "mw_rescaled_days": sorted({str(d.date()) for d in out.index[mw_fixed].normalize()}),
+        "mw_rescaled_days": sorted({str(d.date()) for d in out.index[out["flag_mw_rescaled"]].normalize()}),
         "rows_train_ok": int(out["train_ok"].sum()),
         "daylight_rows_train_ok": int((out["train_ok"] & daylight).sum()),
         "daylight_rows_total": int(daylight.sum()),
     }
-    return out, report, derate
+    return base, out, report, derate

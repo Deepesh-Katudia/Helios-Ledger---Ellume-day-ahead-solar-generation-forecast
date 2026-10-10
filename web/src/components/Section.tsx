@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { EASE_OUT_EXPO, Reveal, Spotlight } from "./motion";
+import { EASE_OUT_EXPO, Reveal, Spotlight, useReducedMotionSafe } from "./motion";
 
 interface SectionProps {
   id: string;
@@ -15,7 +15,7 @@ interface SectionProps {
 
 /** Editorial section: a numbered ledger entry with a big serif title. */
 export function Section({ id, index, kicker, title, lede, children }: SectionProps) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const view = { once: true, margin: "-80px" } as const;
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-8 border-b rule">

@@ -42,8 +42,9 @@ def main() -> None:
     forward = forward_holdout(prep)
     lomo = pd.DataFrame(columns=["month", "model"]) if args.fast else leave_one_month_out(prep)
     log.info("Validation done")
-    for name, m in seasonal[0].items():
-        log.info("  Jul-Aug 2024 hold-out | %-45s MAE %6.1f kW  RMSE %6.1f kW", name, m["mae_kw"], m["rmse_kw"])
+    for name, m in seasonal.results.items():
+        e = seasonal.exports[name]
+        log.info("  Jul-Aug 2024 | %-44s MAE %6.1f  RMSE %6.1f kW | vs exports incl. outages MAE %6.1f", name, m["mae_kw"], m["rmse_kw"], e["mae_kw"])
 
     fc = forecast_test(prep)
     write_submission(fc)

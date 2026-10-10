@@ -66,6 +66,10 @@ export function WorstDays({ days, series }: WorstDaysProps) {
             <h3 className="display text-2xl text-ink">
               Forecast {fmt(day.pred_mwh, 1)} MWh, delivered {fmt(day.actual_mwh, 1)} MWh
             </h3>
+            <p className="num mt-1 text-xs text-muted">
+              Summed over {day.scored_hours} of {day.daylight_hours} daylight hours
+              {day.scored_hours < day.daylight_hours ? "; the rest were excluded by quality control, so this is not a full-day total" : " (the full day)"}
+            </p>
             <p className="mt-3 text-sm leading-relaxed text-ink-2">{day.story}</p>
           </motion.div>
         </AnimatePresence>

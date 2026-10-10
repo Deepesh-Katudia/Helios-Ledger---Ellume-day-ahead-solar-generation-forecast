@@ -14,7 +14,11 @@ interface Scheme {
   label: string;
   why: string;
   results: Record<string, Metrics>;
+  /** Same models scored against recorded exports, outages included. */
+  exports?: Record<string, Metrics>;
 }
+
+type Target = "available" | "exports";
 
 interface LeaderboardProps {
   schemes: Scheme[];
@@ -24,7 +28,11 @@ interface LeaderboardProps {
 export function Leaderboard({ schemes, lomo }: LeaderboardProps) {
   const [schemeId, setSchemeId] = useState(schemes[0].id);
   const scheme = schemes.find((s) => s.id === schemeId) ?? schemes[0];
-  const rows = MODELS.map((m) => ({ meta: m, r: scheme.results[m.name] })).filter((x) => x.r);
+  const [targetPick, setTarget] = useState<Target>("available");
+  const target: Target = scheme.exports ? targetPick : "available";
+  const table = target === "exports" && scheme.exports ? scheme.exports : scheme.results;
+  const rows = MODELS.map((m) => ({ meta: m, r: table[m.name] })).filter((x) => x.r);
+  const anyRow = rows[0]?.r;
   const maxMae = Math.max(...rows.map((x) => x.r.mae_kw));
   const best = Math.min(...rows.map((x) => x.r.mae_kw));
 
@@ -51,6 +59,24 @@ export function Leaderboard({ schemes, lomo }: LeaderboardProps) {
       </div>
       <p className="max-w-3xl text-sm text-ink-2">{scheme.why}</p>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs uppercase tracking-[0.2em] text-muted">Scored against</span>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Scoring target">
+          <button className="chip" aria-pressed={target === "available"} onClick={() => setTarget("available")}>
+            Available plant (clean hours)
+          </button>
+          <button className="chip" aria-pressed={target === "exports"} disabled={!scheme.exports} onClick={() => setTarget("exports")} title={scheme.exports ? undefined : "Not computed for this scheme"}>
+            Actual exports, incl. outages
+          </button>
+        </div>
+      </div>
+      <p className="max-w-3xl text-xs leading-relaxed text-muted">
+        {target === "available"
+          ? "What the model is built for: hours when the plant was available and metering correctly. Outages, curtailment and data faults are excluded."
+          : "Every daylight hour with a trustworthy meter reading, including STOP/PARTIAL outages and curtailment. Only data errors (spikes, frozen meter, missing) are dropped. The gap to the other table is what outages cost a weather-only forecast."}
+        {anyRow ? ` ${fmt(anyRow.n_hours)} hours scored; daily energy over ${anyRow.n_complete_days} complete days.` : ""}
+      </p>
+
       <Card className="overflow-x-auto p-0 sm:p-0">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
@@ -60,7 +86,9 @@ export function Leaderboard({ schemes, lomo }: LeaderboardProps) {
               <th className="px-5 py-4 text-right font-normal">RMSE</th>
               <th className="px-5 py-4 text-right font-normal">nMAE</th>
               <th className="px-5 py-4 text-right font-normal">Bias</th>
-              <th className="px-5 py-4 text-right font-normal">Daily energy MAE</th>
+              <th className="px-5 py-4 text-right font-normal" title="Mean absolute error of daily energy, over days on which every daylight hour is scored">
+                Daily energy MAE<sup className="ml-0.5 normal-case">*</sup>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -99,12 +127,13 @@ export function Leaderboard({ schemes, lomo }: LeaderboardProps) {
                     {r.bias_kw > 0 ? "+" : ""}
                     {fmt(r.bias_kw)}
                   </td>
-                  <td className="num px-5 py-4 text-right text-ink-2">{fmt(r.daily_energy_mae_mwh, 1)} MWh</td>
+                  <td className="num px-5 py-4 text-right text-ink-2">{r.daily_energy_mae_mwh == null ? "—" : `${fmt(r.daily_energy_mae_mwh, 1)} MWh`}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        <p className="border-t rule px-5 py-3 text-xs text-muted">* Complete days only: days on which every daylight hour is scored. Partial days would understate daily energy.</p>
       </Card>
 
       <Card>
