@@ -1,8 +1,10 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip } from "./ChartTooltip";
+import { LazyMount } from "./motion";
 import { Card } from "./Section";
 import { MODELS, type Metrics } from "@/lib/data";
 import { fmt, monthLabel } from "@/lib/format";
@@ -78,7 +80,15 @@ export function Leaderboard({ schemes, lomo }: LeaderboardProps) {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="h-2 flex-1 rounded-full bg-bg-2">
-                        <div className="h-2 rounded-full transition-[width] duration-500" style={{ width: `${(r.mae_kw / maxMae) * 100}%`, background: meta.color }} />
+                        <motion.div
+                          className="h-2 origin-left rounded-full"
+                          style={{ background: meta.color }}
+                          initial={{ scaleX: 0 }}
+                          whileInView={{ scaleX: r.mae_kw / maxMae }}
+                          animate={{ scaleX: r.mae_kw / maxMae }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                        />
                       </div>
                       <span className={`num w-20 text-right ${r.mae_kw === best ? "text-good" : "text-ink"}`}>{fmt(r.mae_kw)} kW</span>
                     </div>
@@ -120,7 +130,7 @@ export function Leaderboard({ schemes, lomo }: LeaderboardProps) {
             ))}
           </div>
         </div>
-        <div className="mt-6 h-80">
+        <LazyMount height={320} className="mt-6">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lomoWide} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="2 6" vertical={false} />
@@ -130,11 +140,11 @@ export function Leaderboard({ schemes, lomo }: LeaderboardProps) {
               <Tooltip content={<ChartTooltip labelFormat={monthLabel} />} />
               <Legend wrapperStyle={{ display: "none" }} />
               {MODELS.filter((m) => shown.includes(m.key)).map((m) => (
-                <Line key={m.key} dataKey={m.key} name={m.short} stroke={m.color} strokeWidth={m.key === "m3" ? 3 : 1.6} dot={{ r: 2.5 }} isAnimationActive={false} />
+                <Line key={m.key} dataKey={m.key} name={m.short} stroke={m.color} strokeWidth={m.key === "m3" ? 3 : 1.6} dot={{ r: 2.5 }} animationDuration={1400} animationEasing="ease-out" />
               ))}
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </LazyMount>
       </Card>
     </div>
   );

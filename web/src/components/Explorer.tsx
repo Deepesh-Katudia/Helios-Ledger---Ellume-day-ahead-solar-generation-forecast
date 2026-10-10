@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip } from "./ChartTooltip";
+import { LazyMount } from "./motion";
 import { Card } from "./Section";
 import { MODELS, type ModelKey, type ValPoint } from "@/lib/data";
 import { dayLabel, fmt } from "@/lib/format";
@@ -60,7 +61,7 @@ export function Explorer({ series }: ExplorerProps) {
         />
       </label>
 
-      <div className="mt-4 h-80">
+      <LazyMount height={320} className="mt-4">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={window} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="2 6" vertical={false} />
@@ -75,7 +76,7 @@ export function Explorer({ series }: ExplorerProps) {
             ))}
           </ComposedChart>
         </ResponsiveContainer>
-      </div>
+      </LazyMount>
 
       <dl className="mt-6 grid grid-cols-2 gap-4 border-t rule pt-5 sm:grid-cols-4">
         <div>

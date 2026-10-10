@@ -1,6 +1,7 @@
 import { DataForensics, type ForensicCase } from "@/components/DataForensics";
 import { Explorer } from "@/components/Explorer";
-import { Hero } from "@/components/Hero";
+import { Hero, type HeroStat } from "@/components/Hero";
+import { GrowBar, ScrollProgress, Stagger, Ticker } from "@/components/motion";
 import { Leaderboard } from "@/components/Leaderboard";
 import { PhysicsGaps } from "@/components/PhysicsGaps";
 import { Card, Section } from "@/components/Section";
@@ -140,16 +141,29 @@ export default function Home() {
     ["M3", "Final: ½ B1 + ½ M1. Physics extrapolates safely into an unusually cloudy test; ML fixes what physics misses."],
   ];
 
-  const hero = [
-    { value: `${fmt(sh.nmae_pct, 1)}%`, label: "nMAE, monsoon hold-out", note: `${fmt(sh.mae_kw)} kW mean daylight error on a 10 MW plant` },
-    { value: `${fmt(summary.skill_vs_climatology_rmse * 100)}%`, label: "RMSE skill", note: "improvement over seasonal climatology" },
-    { value: fmt(summary.rows_flagged_unusable), label: "Hours quarantined", note: `of ${fmt(summary.rows_total)}; cleaned, not guessed` },
-    { value: `${fmt(summary.test_total_mwh)} MWh`, label: "Forecast, Jul–Aug 2025", note: `${summary.test_days} days · mean daylight cloud ${fmt(summary.test_mean_daylight_cloud * 100)}%` },
+  const hero: HeroStat[] = [
+    { value: sh.nmae_pct, decimals: 1, suffix: "%", label: "nMAE, monsoon hold-out", note: `${fmt(sh.mae_kw)} kW mean daylight error on a 10 MW plant` },
+    { value: Math.round(summary.skill_vs_climatology_rmse * 100), suffix: "%", label: "RMSE skill", note: "improvement over seasonal climatology" },
+    { value: summary.rows_flagged_unusable, label: "Hours quarantined", note: `of ${fmt(summary.rows_total)}; cleaned, not guessed` },
+    { value: Math.round(summary.test_total_mwh), suffix: " MWh", label: "Forecast, Jul–Aug 2025", note: `${summary.test_days} days · mean daylight cloud ${fmt(summary.test_mean_daylight_cloud * 100)}%` },
+  ];
+
+  const tape = [
+    `${fmt(load.rows_raw)} raw rows audited`,
+    `${quality.clean.mw_rescaled_days.length} days logged in MW, rescaled ×1000`,
+    "26.9 MW spike on a 10 MW plant",
+    `${fmt(sh.nmae_pct, 1)}% nMAE in the monsoon`,
+    "pyranometer frozen at 412.6 W/m²",
+    "forecast 91% cloud · delivered 77% of clear-sky",
+    `${fmt(summary.test_total_mwh)} MWh promised for Jul–Aug 2025`,
+    "18 leave-one-month-out folds",
   ];
 
   return (
     <main>
+      <ScrollProgress />
       <Hero profile={meanProfile()} stats={hero} />
+      <Ticker items={tape} />
 
       <Section
         id="brief"
@@ -162,7 +176,7 @@ export default function Home() {
         }
         lede="Inputs are four day-ahead forecast fields: cloud cover, temperature, wind and humidity. Plant sensors exist only in the past. Everything the model uses must be knowable the afternoon before."
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             ["Asset", PLANT.location, PLANT.coords],
             ["Capacity", `${PLANT.dc} DC · ${PLANT.ac} AC`, "DC/AC 1.25: clips on bright days"],
@@ -175,7 +189,7 @@ export default function Home() {
               <p className="mt-2 text-sm text-ink-2">{n}</p>
             </Card>
           ))}
-        </div>
+        </Stagger>
       </Section>
 
       <Section
@@ -213,15 +227,18 @@ export default function Home() {
         }
         lede="The sun's position is known exactly for any future hour. So the model doesn't learn the shape of a day; it learns the clear-sky index, the fraction of the physical ceiling that tomorrow's weather lets through."
       >
-        <ol className="grid gap-px overflow-hidden rounded-2xl border rule bg-[var(--c-line)] sm:grid-cols-2 lg:grid-cols-3">
+        <Stagger as="ol" step={0.1} className="grid gap-px overflow-hidden rounded-2xl border rule bg-[var(--c-line)] sm:grid-cols-2 lg:grid-cols-3" itemClassName="group bg-surface p-6 transition-colors duration-300 hover:bg-bg-2">
           {steps.map(([name, text], i) => (
-            <li key={name} className="bg-surface p-6 transition hover:bg-bg-2">
-              <p className="num text-xs text-sun">0{i + 1}</p>
-              <p className="display mt-2 text-2xl text-ink">{name}</p>
+            <div key={name}>
+              <p className="num text-xs text-sun">
+                0{i + 1}
+                <span aria-hidden className="ml-3 inline-block h-px w-6 origin-left scale-x-50 bg-sun align-middle transition-transform duration-500 group-hover:scale-x-[2.5]" />
+              </p>
+              <p className="display mt-2 text-2xl text-ink transition-transform duration-500 group-hover:translate-x-1">{name}</p>
               <p className="mt-2 text-sm leading-relaxed text-ink-2">{text}</p>
-            </li>
+            </div>
           ))}
-        </ol>
+        </Stagger>
 
         <div className="mt-14">
           <h3 className="display text-3xl font-light text-ink">What textbook physics misses</h3>
@@ -242,7 +259,7 @@ export default function Home() {
               <li key={f.feature} className="grid grid-cols-[160px_1fr_56px] items-center gap-3 text-sm sm:grid-cols-[220px_1fr_64px]">
                 <span className="num truncate text-ink-2">{f.feature}</span>
                 <span className="h-2 rounded-full bg-bg-2">
-                  <span className="block h-2 rounded-full bg-ember" style={{ width: `${(f.gain_pct / importance[0].gain_pct) * 100}%` }} />
+                  <GrowBar ratio={f.gain_pct / importance[0].gain_pct} className="h-2 rounded-full bg-ember" />
                 </span>
                 <span className="num text-right text-ink">{fmt(f.gain_pct, 1)}%</span>
               </li>
@@ -297,7 +314,7 @@ export default function Home() {
       </Section>
 
       <Section id="limits" index="07" kicker="Honest limits" title="What would make it better.">
-        <div className="grid gap-4 md:grid-cols-2">
+        <Stagger className="grid gap-4 md:grid-cols-2">
           {[
             ["Weakest where it matters", "Monsoon error (~5% of capacity) is dominated by the cloud forecast, which correlates only about −0.65 with realised irradiance. A single forecast field can't separate bright high overcast from dark convective cloud."],
             ["One monsoon of history", "Every monsoon conclusion rests on Jun–Sep 2024 and Jun 2025. The cloud → irradiance mapping is regime dependent, and one season is thin evidence for it."],
@@ -309,7 +326,7 @@ export default function Home() {
               <p className="mt-2 text-sm leading-relaxed text-ink-2">{v}</p>
             </Card>
           ))}
-        </div>
+        </Stagger>
       </Section>
 
       <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-10 text-xs text-muted sm:px-8">

@@ -2,6 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip } from "./ChartTooltip";
+import { LazyMount } from "./motion";
 import { Card } from "./Section";
 import { monthLabel } from "@/lib/format";
 
@@ -21,7 +22,7 @@ export function PhysicsGaps({ byHour, byMonth }: PhysicsGapsProps) {
           Actual minus textbook PVWatts, <em>given the measured irradiance</em>. At low sun the plant loses about 280&nbsp;kW the model
           doesn&rsquo;t expect, consistent with row-to-row shading and angle-of-incidence losses on a fixed 15° array.
         </p>
-        <div className="mt-5 h-60">
+        <LazyMount height={240} className="mt-5">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={byHour} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="2 6" vertical={false} />
@@ -36,7 +37,7 @@ export function PhysicsGaps({ byHour, byMonth }: PhysicsGapsProps) {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </LazyMount>
       </Card>
       <Card>
         <h3 className="display text-xl text-ink">Dry months run dirty, the monsoon washes the panels</h3>
@@ -44,7 +45,7 @@ export function PhysicsGaps({ byHour, byMonth }: PhysicsGapsProps) {
           The same residual by month, against rainfall. A deficit of up to about 250&nbsp;kW builds through the dry Oct–May season and vanishes once the rains
           arrive: the signature of soiling. Good news for a Jul–Aug test period, and a reason to let a learned model correct the physics.
         </p>
-        <div className="mt-5 h-60">
+        <LazyMount height={240} className="mt-5">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={byMonth} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="2 6" vertical={false} />
@@ -61,7 +62,7 @@ export function PhysicsGaps({ byHour, byMonth }: PhysicsGapsProps) {
               <Line yAxisId="rain" dataKey="rain_mm" name="rain (mm)" stroke="var(--c-sky)" dot={false} strokeWidth={2} />
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
+        </LazyMount>
       </Card>
     </div>
   );

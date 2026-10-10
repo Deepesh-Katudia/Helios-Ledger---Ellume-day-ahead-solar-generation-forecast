@@ -145,7 +145,141 @@ body::before {
   outline: none;
 }
 
+/* ---------- Motion layer ---------- */
+
+/* Pointer spotlight: a soft sun patch on the surface plus a lit border. */
+.spotlight {
+  position: relative;
+  isolation: isolate;
+}
+.spotlight::before,
+.spotlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.spotlight::before {
+  z-index: -1;
+  background: radial-gradient(420px circle at var(--mx) var(--my), var(--c-sun-soft), transparent 60%);
+}
+.spotlight::after {
+  padding: 1px;
+  background: radial-gradient(260px circle at var(--mx) var(--my), var(--c-sun), transparent 65%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.spotlight[data-active="true"]::before,
+.spotlight[data-active="true"]::after {
+  opacity: 1;
+}
+
+/* Ledger tape */
+.ticker-track {
+  animation: ticker 48s linear infinite;
+}
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+.ticker::before,
+.ticker::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  z-index: 1;
+  pointer-events: none;
+}
+.ticker::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--c-bg), transparent);
+}
+.ticker::after {
+  right: 0;
+  background: linear-gradient(-90deg, var(--c-bg), transparent);
+}
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Hero atmosphere: breathing dawn glow and drifting dust motes. */
+.dawn {
+  animation: dawn 7s ease-in-out infinite alternate;
+  transform-origin: 50% 100%;
+}
+@keyframes dawn {
+  from {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+.mote {
+  position: absolute;
+  bottom: -10px;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--c-sun);
+  box-shadow: 0 0 8px var(--c-sun);
+  opacity: 0;
+  animation: mote linear infinite;
+}
+@keyframes mote {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate3d(var(--drift, 30px), -70vh, 0);
+    opacity: 0;
+  }
+}
+
+/* Shimmer sweep across the primary CTA */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%) skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: shine 3.6s ease-in-out infinite;
+}
+@keyframes shine {
+  0%,
+  60% {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(220%) skewX(-20deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ticker-track,
+  .dawn,
+  .mote,
+  .shine::after {
+    animation: none !important;
+  }
+
   html {
     scroll-behavior: auto;
   }
