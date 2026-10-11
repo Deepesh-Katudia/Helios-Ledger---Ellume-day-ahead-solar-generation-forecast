@@ -3,6 +3,7 @@ import { Explorer } from "@/components/Explorer";
 import { Hero, type HeroStat } from "@/components/Hero";
 import { GrowBar, ScrollProgress, Stagger, Ticker } from "@/components/motion";
 import { Leaderboard } from "@/components/Leaderboard";
+import { MetricGuide } from "@/components/MetricGuide";
 import { PhysicsGaps } from "@/components/PhysicsGaps";
 import { Card, Section } from "@/components/Section";
 import { TestForecast } from "@/components/TestForecast";
@@ -145,8 +146,8 @@ export default function Home() {
   ];
 
   const hero: HeroStat[] = [
-    { value: sh.nmae_pct, decimals: 1, suffix: "%", label: "nMAE, monsoon hold-out", note: `${fmt(sh.mae_kw)} kW daylight error · available-plant hours` },
-    { value: Math.round(summary.skill_vs_climatology_rmse * 100), suffix: "%", label: "RMSE skill", note: "improvement over seasonal climatology" },
+    { value: sh.nmae_pct, decimals: 1, suffix: "%", label: "Typical hourly error (nMAE)", note: `off by ~${fmt(sh.mae_kw)} kW an hour on a ${PLANT.ac} plant · monsoon test run` },
+    { value: Math.round(summary.skill_vs_climatology_rmse * 100), suffix: "%", label: "Better than a naive guess", note: "smaller errors (RMSE) than “a typical day for this month”" },
     { value: summary.rows_flagged_unusable, label: "Hours quarantined", note: `of ${fmt(summary.rows_total)}; cleaned, not guessed` },
     { value: Math.round(summary.test_total_mwh), suffix: " MWh", label: "Forecast, Jul–Aug 2025", note: `${summary.test_days} days · mean daylight cloud ${fmt(summary.test_mean_daylight_cloud * 100)}%` },
   ];
@@ -282,6 +283,7 @@ export default function Home() {
         }
         lede="Six forecasts, three time-respecting validation schemes, no random splits. Scored on clean daylight hours only: night is trivially zero, and outages are not a weather question."
       >
+        <MetricGuide final={sh} skill={summary.skill_vs_climatology_rmse} capacityKw={PLANT.acKw} />
         <Leaderboard schemes={schemes} lomo={leaderboard.lomo_by_month} />
         {shExports && (
           <Card className="mt-6 border-[var(--c-bad)]/40">

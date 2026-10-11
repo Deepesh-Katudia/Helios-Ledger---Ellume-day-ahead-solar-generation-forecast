@@ -82,11 +82,11 @@ export function Leaderboard({ schemes, lomo }: LeaderboardProps) {
           <thead>
             <tr className="border-b rule text-left text-xs uppercase tracking-[0.15em] text-muted">
               <th className="px-5 py-4 font-normal">Model</th>
-              <th className="w-[34%] px-5 py-4 font-normal">Daylight MAE</th>
-              <th className="px-5 py-4 text-right font-normal">RMSE</th>
-              <th className="px-5 py-4 text-right font-normal">nMAE</th>
-              <th className="px-5 py-4 text-right font-normal">Bias</th>
-              <th className="px-5 py-4 text-right font-normal" title="Mean absolute error of daily energy, over days on which every daylight hour is scored">
+              <th className="w-[34%] px-5 py-4 font-normal" title="Average miss per daylight hour, ignoring direction. Lower is better.">Daylight MAE</th>
+              <th className="px-5 py-4 text-right font-normal" title="Like MAE, but big misses count extra. Lower is better.">RMSE</th>
+              <th className="px-5 py-4 text-right font-normal" title="Average miss as a % of the plant&apos;s 10 MW maximum. Lower is better.">nMAE</th>
+              <th className="px-5 py-4 text-right font-normal" title="Average miss with direction: + promised too much, − promised too little. Closer to 0 is better.">Bias</th>
+              <th className="px-5 py-4 text-right font-normal" title="How far off each whole day&apos;s total energy was, on average. Lower is better.">
                 Daily energy MAE<sup className="ml-0.5 normal-case">*</sup>
               </th>
             </tr>

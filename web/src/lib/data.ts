@@ -135,6 +135,7 @@ export const PLANT = {
   coords: "14.10° N, 77.28° E · 680 m",
   dc: "12.5 MWp",
   ac: "10 MW",
+  acKw: 10_000,
   array: "Fixed tilt 15°, due south",
   tech: "Mono PERC, −0.35 %/°C",
 };
