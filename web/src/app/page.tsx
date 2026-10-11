@@ -231,7 +231,7 @@ export default function Home() {
         }
         lede="The sun's position is known exactly for any future hour. So the model doesn't learn the shape of a day; it learns the clear-sky index, the fraction of the physical ceiling that tomorrow's weather lets through."
       >
-        <Stagger as="ol" step={0.1} className="grid gap-px overflow-hidden rounded-2xl border rule bg-[var(--c-line)] sm:grid-cols-2 lg:grid-cols-3" itemClassName="group bg-surface p-6 transition-colors duration-300 hover:bg-bg-2">
+        <Stagger as="ol" step={0.1} className="grid gap-px overflow-hidden rounded-2xl border rule bg-line sm:grid-cols-2 lg:grid-cols-3" itemClassName="group bg-surface p-6 transition-colors duration-300 hover:bg-bg-2">
           {steps.map(([name, text], i) => (
             <div key={name}>
               <p className="num text-xs text-sun">
@@ -286,7 +286,7 @@ export default function Home() {
         <MetricGuide final={sh} skill={summary.skill_vs_climatology_rmse} capacityKw={PLANT.acKw} />
         <Leaderboard schemes={schemes} lomo={leaderboard.lomo_by_month} />
         {shExports && (
-          <Card className="mt-6 border-[var(--c-bad)]/40">
+          <Card className="mt-6 border-(--c-bad)/40">
             <div className="grid gap-6 md:grid-cols-[1.3fr_1fr] md:items-center">
               <div>
                 <p className="num text-xs uppercase tracking-[0.2em] text-bad">Available plant ≠ actual exports</p>
@@ -304,7 +304,7 @@ export default function Home() {
                   <dd className="num mt-1 text-2xl text-ink">{fmt(sh.mae_kw)} kW</dd>
                   <dd className="num text-xs text-ink-2">bias {fmt(sh.bias_kw)} kW</dd>
                 </div>
-                <div className="rounded-xl border border-[var(--c-bad)]/50 p-4">
+                <div className="rounded-xl border border-(--c-bad)/50 p-4">
                   <dt className="text-xs text-muted">Actual exports</dt>
                   <dd className="num mt-1 text-2xl text-bad">{fmt(shExports.mae_kw)} kW</dd>
                   <dd className="num text-xs text-ink-2">bias +{fmt(shExports.bias_kw)} kW</dd>
